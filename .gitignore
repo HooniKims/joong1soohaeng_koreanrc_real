@@ -1,0 +1,51 @@
+# 운영체제와 편집기 임시 파일
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*.tmp
+*.temp
+
+# 로컬 환경 설정과 비밀값
+.env
+.env.*
+!.env.example
+
+# Node와 빌드 산출물
+node_modules/
+dist/
+build/
+.parcel-cache/
+.vite/
+
+# 테스트와 브라우저 검증 산출물
+test-output/
+test-results/
+playwright-report/
+.chrome-cdp-temp/
+coverage/
+
+# 로그와 캐시
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.cache/
+
+# Netlify 로컬 상태
+.netlify/
+
+# 작업용 참고 문서와 초안 원문
+AGENTS.md
+DESIGN.md
+plan.md
+checklist.md
+context-notes.md
+text.md
+newtext.md
+
+# 프로젝트 전용 스킬과 이전 완성품 보관본
+skills/
+archives/
+*.zip

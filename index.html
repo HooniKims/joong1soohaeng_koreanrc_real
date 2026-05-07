@@ -1,0 +1,80 @@
+<!-- 중심 문장 찾기 학습 웹앱의 진입 문서 -->
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="문단별 중심 문장을 찾으며 문장 관계를 익히는 학습용 웹앱입니다."
+    />
+    <title>등촌중학교 1학년 국어 비판적 독해 수행평가</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <section id="login-page" class="login-page" aria-labelledby="login-title">
+      <div class="login-bg" aria-hidden="true"></div>
+      <div class="login-overlay" aria-hidden="true"></div>
+      <div class="login-content">
+        <p class="login-eyebrow">수행평가 입장</p>
+        <h1 id="login-title">등촌중학교 1학년 국어 비판적 독해 수행평가</h1>
+        <form id="student-login-form" class="student-login-form" novalidate>
+          <div class="field-group">
+            <label for="student-number">학번</label>
+            <input
+              id="student-number"
+              name="studentNumber"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              maxlength="4"
+              pattern="[0-9]{4}"
+              placeholder="예: 1101"
+              aria-describedby="login-error"
+              required
+            />
+          </div>
+          <div class="field-group">
+            <label for="student-name">이름</label>
+            <input
+              id="student-name"
+              name="studentName"
+              type="text"
+              autocomplete="off"
+              pattern="[가-힣]{1,5}"
+              placeholder="이름 입력"
+              aria-describedby="login-error"
+              required
+            />
+          </div>
+          <p id="login-error" class="login-error" role="alert"></p>
+          <button class="login-submit" type="submit">확인</button>
+        </form>
+      </div>
+    </section>
+
+    <main id="main-app" class="app-shell" aria-live="polite" hidden>
+      <header class="lesson-hero">
+        <p class="eyebrow">중심 문장 찾기 훈련</p>
+        <h1>
+          <span class="title-badge-wrap">
+            <span id="lesson-title" class="lesson-title-text"></span>
+            <span class="brand-by">by HooniKim</span>
+          </span>
+        </h1>
+        <p id="lesson-subtitle" class="lesson-subtitle"></p>
+      </header>
+
+      <section class="progress-band" aria-label="문단 진행 상황">
+        <div id="progress-label" class="progress-label"></div>
+        <div id="progress-dots" class="progress-dots"></div>
+      </section>
+
+      <section id="lesson-stage" class="lesson-stage"></section>
+
+      <section id="summary-stage" class="summary-stage" hidden></section>
+    </main>
+
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>

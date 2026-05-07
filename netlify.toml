@@ -1,0 +1,3 @@
+# Netlify 정적 배포 설정
+[build]
+publish = "."
