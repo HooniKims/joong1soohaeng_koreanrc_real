@@ -3,15 +3,48 @@ export function createInitialState() {
   return {
     currentIndex: 0,
     selectedIndex: null,
+    pendingSelection: null,
     feedback: null,
     reviewTargetIndex: null,
     reviewStarted: false,
     reviewAnswerIndex: null,
+    pendingReviewSelection: null,
     reviewFeedback: null,
     solvedParagraphs: new Set(),
     collectedCenters: [],
+    shuffledSummaryCenters: null,
+    studentSummary: "",
+    isSummarySubmitted: false,
     isComplete: false,
   };
+}
+
+export function setPendingSentenceSelection(state, selection) {
+  state.selectedIndex = selection.sentenceIndex;
+  state.pendingSelection = {
+    ...selection,
+    isFinalConfirm: false,
+  };
+  state.feedback = null;
+  state.reviewTargetIndex = null;
+  state.reviewStarted = false;
+  state.reviewAnswerIndex = null;
+  state.pendingReviewSelection = null;
+  state.reviewFeedback = null;
+}
+
+export function requestPendingSelectionFinalConfirm(state) {
+  if (!state.pendingSelection) {
+    return false;
+  }
+
+  state.pendingSelection.isFinalConfirm = true;
+  return true;
+}
+
+export function clearPendingSentenceSelection(state) {
+  state.pendingSelection = null;
+  state.selectedIndex = null;
 }
 
 export function selectSentence(state, lesson, sentenceIndex) {
@@ -20,6 +53,7 @@ export function selectSentence(state, lesson, sentenceIndex) {
   const isCorrect = sentenceIndex === paragraph.centerIndex;
 
   state.selectedIndex = sentenceIndex;
+  state.pendingSelection = null;
   state.feedback = {
     isCorrect,
     role: sentence.role,
@@ -27,31 +61,58 @@ export function selectSentence(state, lesson, sentenceIndex) {
     sentence: sentence.text,
   };
 
-  if (isCorrect && !state.solvedParagraphs.has(paragraph.id)) {
+  if (!state.solvedParagraphs.has(paragraph.id)) {
     state.solvedParagraphs.add(paragraph.id);
     state.reviewTargetIndex = pickReviewTargetIndex(paragraph);
+    state.reviewStarted = false;
     state.collectedCenters.push({
       paragraphId: paragraph.id,
       label: paragraph.label,
-      text: sentence.text,
+      text: paragraph.sentences[paragraph.centerIndex].text,
     });
-  } else if (!isCorrect) {
-    state.reviewTargetIndex = null;
-    state.reviewStarted = false;
-    state.reviewAnswerIndex = null;
-    state.reviewFeedback = null;
   }
 
+  state.reviewAnswerIndex = null;
+  state.pendingReviewSelection = null;
+  state.reviewFeedback = null;
   return state.feedback;
 }
 
 export function startReviewQuestion(state) {
-  if (!state.feedback?.isCorrect) {
+  if (!state.feedback) {
     return false;
   }
 
   state.reviewStarted = true;
   return true;
+}
+
+export function setPendingReviewAnswerSelection(state, answerIndex) {
+  if (!state.reviewStarted || state.reviewFeedback?.isCorrect) {
+    return false;
+  }
+
+  state.reviewAnswerIndex = answerIndex;
+  state.pendingReviewSelection = {
+    answerIndex,
+    isFinalConfirm: false,
+  };
+  state.reviewFeedback = null;
+  return true;
+}
+
+export function requestPendingReviewFinalConfirm(state) {
+  if (!state.pendingReviewSelection) {
+    return false;
+  }
+
+  state.pendingReviewSelection.isFinalConfirm = true;
+  return true;
+}
+
+export function clearPendingReviewAnswerSelection(state) {
+  state.pendingReviewSelection = null;
+  state.reviewAnswerIndex = null;
 }
 
 export function selectReviewAnswer(state, lesson, sentenceIndex) {
@@ -61,6 +122,7 @@ export function selectReviewAnswer(state, lesson, sentenceIndex) {
   const isCorrect = sentenceIndex === answerIndex;
 
   state.reviewAnswerIndex = sentenceIndex;
+  state.pendingReviewSelection = null;
   state.reviewFeedback = {
     isCorrect,
     message: isCorrect
@@ -80,7 +142,18 @@ function pickReviewTargetIndex(paragraph) {
 }
 
 export function canMoveNext(state) {
-  return Boolean(state.feedback?.isCorrect && state.reviewFeedback?.isCorrect);
+  return Boolean(state.feedback && state.reviewFeedback);
+}
+
+export function submitStudentSummary(state, summaryText) {
+  const normalizedSummary = summaryText.trim();
+  if (!normalizedSummary) {
+    return false;
+  }
+
+  state.studentSummary = normalizedSummary;
+  state.isSummarySubmitted = true;
+  return true;
 }
 
 export function moveNext(state, lesson) {
@@ -95,10 +168,12 @@ export function moveNext(state, lesson) {
 
   state.currentIndex += 1;
   state.selectedIndex = null;
+  state.pendingSelection = null;
   state.feedback = null;
   state.reviewTargetIndex = null;
   state.reviewStarted = false;
   state.reviewAnswerIndex = null;
+  state.pendingReviewSelection = null;
   state.reviewFeedback = null;
   return true;
 }
@@ -106,12 +181,17 @@ export function moveNext(state, lesson) {
 export function restartLesson(state) {
   state.currentIndex = 0;
   state.selectedIndex = null;
+  state.pendingSelection = null;
   state.feedback = null;
   state.reviewTargetIndex = null;
   state.reviewStarted = false;
   state.reviewAnswerIndex = null;
+  state.pendingReviewSelection = null;
   state.reviewFeedback = null;
   state.solvedParagraphs.clear();
   state.collectedCenters = [];
+  state.shuffledSummaryCenters = null;
+  state.studentSummary = "";
+  state.isSummarySubmitted = false;
   state.isComplete = false;
 }

@@ -1,5 +1,5 @@
 // 학습 화면과 피드백 화면을 그리는 렌더링 모듈
-import { buildSummaryPieces, createSummaryText } from "./summary.js";
+import { buildSummaryPieces } from "./summary.js";
 
 const titleEl = document.querySelector("#lesson-title");
 const subtitleEl = document.querySelector("#lesson-subtitle");
@@ -66,11 +66,13 @@ export function renderParagraph(lesson, state, handlers) {
     sentenceEl.innerHTML = `<span class="sentence-text">${sentence.text}</span>`;
 
     if (!isSolved) {
-      sentenceEl.addEventListener("click", () => handlers.onSelect(index));
+      sentenceEl.addEventListener("click", (event) => {
+        handlers.onSelect(createPendingSelection(index, event, sentenceEl, list));
+      });
       sentenceEl.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          handlers.onSelect(index);
+          handlers.onSelect(createPendingSelection(index, event, sentenceEl, list));
         }
       });
     }
@@ -79,9 +81,73 @@ export function renderParagraph(lesson, state, handlers) {
     list.append(document.createTextNode(" "));
   });
 
+  renderSelectionConfirm(list, state, handlers);
   renderFeedback(section, paragraph, state, handlers);
   stageEl.replaceChildren(section);
   summaryEl.hidden = true;
+}
+
+function createPendingSelection(sentenceIndex, event, sentenceEl, list) {
+  const listRect = list.getBoundingClientRect();
+  const sentenceRect = sentenceEl.getBoundingClientRect();
+  const clientX = event.clientX || sentenceRect.left + Math.min(sentenceRect.width / 2, 160);
+  const clientY = event.clientY || sentenceRect.top + sentenceRect.height / 2;
+  const confirmWidth = Math.min(260, Math.max(160, listRect.width - 28));
+  const horizontalPadding = confirmWidth / 2 + 8;
+
+  return {
+    sentenceIndex,
+    left: clamp(
+      clientX - listRect.left,
+      horizontalPadding,
+      Math.max(horizontalPadding, listRect.width - horizontalPadding),
+    ),
+    top: clamp(clientY - listRect.top, 14, Math.max(14, listRect.height - 14)),
+  };
+}
+
+function renderSelectionConfirm(list, state, handlers) {
+  if (!state.pendingSelection) {
+    return;
+  }
+
+  const confirmEl = document.createElement("div");
+  confirmEl.className = "selection-confirm";
+  confirmEl.dataset.placement = state.pendingSelection.top < 96 ? "below" : "above";
+  confirmEl.style.left = `${state.pendingSelection.left}px`;
+  confirmEl.style.top = `${state.pendingSelection.top}px`;
+  confirmEl.setAttribute("role", "dialog");
+  confirmEl.setAttribute("aria-label", state.pendingSelection.isFinalConfirm ? "최종 선택 확인" : "선택 확인");
+  const prompt = state.pendingSelection.isFinalConfirm
+    ? "진짜 후회 없죠?"
+    : "이 문장으로 선택할까요?";
+  const primaryClass = state.pendingSelection.isFinalConfirm
+    ? "final-confirm-selection"
+    : "confirm-selection";
+  confirmEl.innerHTML = `
+    <p>${prompt}</p>
+    <div class="selection-confirm-actions">
+      <button class="${primaryClass}" type="button">확인</button>
+      <button class="cancel-selection" type="button">다시 선택</button>
+    </div>
+  `;
+
+  if (state.pendingSelection.isFinalConfirm) {
+    confirmEl
+      .querySelector(".final-confirm-selection")
+      .addEventListener("click", handlers.onFinalConfirmSelection);
+  } else {
+    confirmEl.querySelector(".confirm-selection").addEventListener("click", handlers.onConfirmSelection);
+  }
+  confirmEl.querySelector(".cancel-selection").addEventListener("click", handlers.onCancelSelection);
+  list.append(confirmEl);
+  requestAnimationFrame(() =>
+    confirmEl.querySelector(".confirm-selection, .final-confirm-selection")?.focus(),
+  );
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
 }
 
 function renderFeedback(section, paragraph, state, handlers) {
@@ -120,19 +186,42 @@ function renderFeedback(section, paragraph, state, handlers) {
     `;
   } else {
     feedbackPanel.innerHTML = `
-      <p class="feedback-title">다시 생각해 봅시다.</p>
+      <p class="feedback-title">오답입니다.</p>
       <p class="feedback-copy">선택한 문장은 <strong>${state.feedback.role}</strong>입니다.</p>
       <p class="hint-copy">${state.feedback.relation}</p>
+      ${
+        state.reviewStarted
+          ? renderReviewQuestion(paragraph, state)
+          : `
+            ${renderRelationList(paragraph)}
+            <div class="review-ready">
+              <div>
+                <p class="review-ready-title">이제 확인 문제를 풀겠습니다.</p>
+                <p class="shiny-text">각 문장의 설명을 확인한 뒤 문제로 넘어가세요.</p>
+              </div>
+              <button class="secondary-action review-start" type="button">확인 문제 풀기</button>
+            </div>
+          `
+      }
     `;
   }
 
   feedbackPanel.querySelectorAll(".review-option").forEach((button, index) => {
     button.addEventListener("click", () => handlers.onReviewSelect(index));
   });
+  feedbackPanel
+    .querySelector(".review-confirm-step")
+    ?.addEventListener("click", handlers.onConfirmReviewSelection);
+  feedbackPanel
+    .querySelector(".review-final-confirm-step")
+    ?.addEventListener("click", handlers.onFinalConfirmReviewSelection);
+  feedbackPanel
+    .querySelector(".review-cancel-selection")
+    ?.addEventListener("click", handlers.onCancelReviewSelection);
   feedbackPanel.querySelector(".review-start")?.addEventListener("click", handlers.onReviewStart);
 
   actionRow.replaceChildren();
-  if (state.feedback.isCorrect && state.reviewFeedback?.isCorrect) {
+  if (state.feedback && state.reviewFeedback) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "primary-action";
@@ -177,7 +266,7 @@ function renderReviewQuestion(paragraph, state) {
                 data-selected="${state.reviewAnswerIndex === index}"
                 data-correct="${state.reviewFeedback?.isCorrect && answerIndex === index}"
                 data-incorrect="${state.reviewAnswerIndex === index && state.reviewFeedback && !state.reviewFeedback.isCorrect}"
-                ${state.reviewFeedback?.isCorrect ? "disabled" : ""}
+                ${state.reviewFeedback ? "disabled" : ""}
               >
                 <span>${index + 1}문장</span>
               </button>
@@ -185,12 +274,37 @@ function renderReviewQuestion(paragraph, state) {
           )
           .join("")}
       </div>
+      ${renderReviewAnswerConfirm(state)}
       ${
         state.reviewFeedback
           ? `<p class="review-feedback" data-correct="${state.reviewFeedback.isCorrect}">${state.reviewFeedback.message}</p>`
           : `<p class="review-help">본문의 각 문장이 무슨 역할을 했는지 떠올리며 골라 보세요.</p>`
       }
     </section>
+  `;
+}
+
+function renderReviewAnswerConfirm(state) {
+  if (!state.pendingReviewSelection || state.reviewFeedback) {
+    return "";
+  }
+
+  const answerNumber = state.pendingReviewSelection.answerIndex + 1;
+  const prompt = state.pendingReviewSelection.isFinalConfirm
+    ? "마지막 확인입니다. 이 답으로 확정할까요?"
+    : `${answerNumber}문장으로 제출할까요?`;
+  const primaryClass = state.pendingReviewSelection.isFinalConfirm
+    ? "review-final-confirm-step"
+    : "review-confirm-step";
+
+  return `
+    <div class="review-answer-confirm" role="status" aria-live="polite">
+      <p>${prompt}</p>
+      <div class="review-answer-confirm-actions">
+        <button class="${primaryClass}" type="button">제출</button>
+        <button class="review-cancel-selection" type="button">다시 고르기</button>
+      </div>
+    </div>
   `;
 }
 
@@ -206,38 +320,96 @@ function createReviewQuestion(paragraph, answerIndex) {
 export function renderSummary(lesson, state, handlers) {
   stageEl.replaceChildren();
   summaryEl.hidden = false;
-  const pieces = buildSummaryPieces(state.collectedCenters);
-  const summaryText = createSummaryText(state.collectedCenters);
+  if (!state.shuffledSummaryCenters) {
+    state.shuffledSummaryCenters = shuffleSummaryCenters(state.collectedCenters);
+  }
+  const pieces = buildSummaryPieces(state.shuffledSummaryCenters);
 
   summaryEl.innerHTML = `
     <div class="summary-panel">
       <p class="eyebrow">전체 글 요약</p>
-      <h2>중심 문장들이 하나의 요약으로 모였습니다.</h2>
+      <h2>중심 문장들을 바탕으로 전체 글을 직접 요약하세요.</h2>
       <div class="collected-sentences">
         ${pieces
           .map(
             (piece, index) => `
               <div class="center-chip" style="--delay:${index * 100}ms">
-                <span>${piece.label}</span>
+                <div class="center-chip-header">
+                  <span>${piece.label}</span>
+                  <button class="copy-center-sentence" type="button" data-copy-text="${escapeHtml(piece.text)}">복사하기</button>
+                </div>
                 <p>${piece.text}</p>
               </div>
             `,
           )
           .join("")}
       </div>
-      <p class="summary-copy">
-        ${pieces
-          .map(
-            (piece) =>
-              `<span class="rainbow-connector">${piece.connector}</span>, ${piece.text}`,
-          )
-          .join(" ")}
-      </p>
-      <button class="secondary-action" type="button">처음부터 다시 학습하기</button>
+      <form class="student-summary-form">
+        <label for="student-summary">나의 요약</label>
+        <textarea
+          id="student-summary"
+          name="studentSummary"
+          rows="6"
+          placeholder="중심 문장들을 이어 보며 전체 글의 핵심 내용을 직접 정리해 보세요."
+          ${state.isSummarySubmitted ? "disabled" : ""}
+        >${escapeHtml(state.studentSummary)}</textarea>
+        <div class="summary-actions">
+          <button class="summary-submit" type="submit" ${state.isSummarySubmitted ? "disabled" : ""}>제출</button>
+          <button class="secondary-action" type="button">처음부터 다시 학습하기</button>
+        </div>
+        ${
+          state.isSummarySubmitted
+            ? `<p class="summary-submit-message">요약이 제출되었습니다.</p>`
+            : `<p class="summary-submit-help">빈칸에 직접 요약을 쓴 뒤 제출하세요.</p>`
+        }
+      </form>
     </div>
   `;
 
+  summaryEl.querySelector(".student-summary-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    handlers.onSubmit(summaryEl.querySelector("#student-summary").value);
+  });
+  summaryEl.querySelectorAll(".copy-center-sentence").forEach((button) => {
+    button.addEventListener("click", () => copyCenterSentence(button));
+  });
   summaryEl.querySelector(".secondary-action").addEventListener("click", handlers.onRestart);
-  summaryEl.dataset.summary = summaryText;
+  summaryEl.dataset.summary = state.studentSummary;
   renderProgress(lesson, state);
+}
+
+function shuffleSummaryCenters(collectedCenters) {
+  const shuffled = [...collectedCenters];
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+
+  if (isOriginalOrder(collectedCenters, shuffled) && shuffled.length > 1) {
+    [shuffled[0], shuffled[1]] = [shuffled[1], shuffled[0]];
+  }
+
+  return shuffled;
+}
+
+function isOriginalOrder(original, shuffled) {
+  return original.every((item, index) => item.paragraphId === shuffled[index]?.paragraphId);
+}
+
+async function copyCenterSentence(button) {
+  const text = button.dataset.copyText;
+  await navigator.clipboard.writeText(text);
+  button.textContent = "복사됨";
+  window.setTimeout(() => {
+    button.textContent = "복사하기";
+  }, 1200);
+}
+
+function escapeHtml(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }

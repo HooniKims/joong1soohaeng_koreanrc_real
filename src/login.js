@@ -6,6 +6,7 @@ const numberInputEl = document.querySelector("#student-number");
 const nameInputEl = document.querySelector("#student-name");
 const errorEl = document.querySelector("#login-error");
 let isNameComposing = false;
+let errorDismissTimer = null;
 
 export function initStudentLogin(onConfirm) {
   numberInputEl.addEventListener("input", () => {
@@ -41,6 +42,14 @@ export function initStudentLogin(onConfirm) {
       name: sanitizeName(nameInputEl.value.trim()),
     };
     nameInputEl.value = student.name;
+    const missingFieldMessage = getMissingFieldMessage(student);
+
+    if (missingFieldMessage) {
+      showError(missingFieldMessage);
+      focusFirstMissingField(student);
+      return;
+    }
+
     const errorMessage = validateStudent(student);
 
     if (errorMessage) {
@@ -52,6 +61,33 @@ export function initStudentLogin(onConfirm) {
     mainAppEl.hidden = false;
     onConfirm(student);
   });
+}
+
+function getMissingFieldMessage(student) {
+  if (!student.number && !student.name) {
+    return "학번과 이름을 입력하세요.";
+  }
+
+  if (!student.number) {
+    return "학번을 입력하세요.";
+  }
+
+  if (!student.name) {
+    return "이름을 입력하세요.";
+  }
+
+  return "";
+}
+
+function focusFirstMissingField(student) {
+  if (!student.number) {
+    numberInputEl.focus();
+    return;
+  }
+
+  if (!student.name) {
+    nameInputEl.focus();
+  }
 }
 
 function validateStudent(student) {
@@ -71,9 +107,20 @@ function sanitizeName(value) {
 }
 
 function showError(message) {
+  window.clearTimeout(errorDismissTimer);
   errorEl.textContent = message;
+  errorEl.dataset.visible = "true";
+  errorEl.style.animation = "none";
+  errorEl.offsetHeight;
+  errorEl.style.animation = "";
+  errorDismissTimer = window.setTimeout(() => {
+    errorEl.dataset.visible = "false";
+    errorEl.textContent = "";
+  }, 2400);
 }
 
 function clearError() {
+  window.clearTimeout(errorDismissTimer);
+  errorEl.dataset.visible = "false";
   errorEl.textContent = "";
 }

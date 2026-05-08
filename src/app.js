@@ -3,11 +3,18 @@ import { lesson } from "./data.js";
 import { initStudentLogin } from "./login.js";
 import {
   createInitialState,
+  clearPendingSentenceSelection,
   moveNext,
+  requestPendingSelectionFinalConfirm,
+  requestPendingReviewFinalConfirm,
   restartLesson,
+  clearPendingReviewAnswerSelection,
   selectReviewAnswer,
   selectSentence,
+  setPendingReviewAnswerSelection,
+  setPendingSentenceSelection,
   startReviewQuestion,
+  submitStudentSummary,
 } from "./state.js";
 import {
   renderParagraph,
@@ -17,12 +24,17 @@ import {
 } from "./render.js";
 
 const state = createInitialState();
+const isSummaryPreview = new URLSearchParams(window.location.search).has("summaryPreview");
 
 function paint(options = {}) {
   renderProgress(lesson, state);
 
   if (state.isComplete) {
     renderSummary(lesson, state, {
+      onSubmit: (summaryText) => {
+        submitStudentSummary(state, summaryText);
+        paint({ animate: false });
+      },
       onRestart: () => {
         restartLesson(state);
         paint();
@@ -34,12 +46,48 @@ function paint(options = {}) {
   renderParagraph(lesson, state, {
     animate: options.animate ?? true,
     isLast: state.currentIndex === lesson.paragraphs.length - 1,
-    onSelect: (sentenceIndex) => {
-      selectSentence(state, lesson, sentenceIndex);
+    onSelect: (selection) => {
+      setPendingSentenceSelection(state, selection);
+      paint({ animate: false });
+    },
+    onConfirmSelection: () => {
+      if (!state.pendingSelection) {
+        return;
+      }
+
+      requestPendingSelectionFinalConfirm(state);
+      paint({ animate: false });
+    },
+    onFinalConfirmSelection: () => {
+      if (!state.pendingSelection) {
+        return;
+      }
+
+      selectSentence(state, lesson, state.pendingSelection.sentenceIndex);
+      paint({ animate: false });
+    },
+    onCancelSelection: () => {
+      clearPendingSentenceSelection(state);
       paint({ animate: false });
     },
     onReviewSelect: (sentenceIndex) => {
-      selectReviewAnswer(state, lesson, sentenceIndex);
+      setPendingReviewAnswerSelection(state, sentenceIndex);
+      paint({ animate: false });
+    },
+    onConfirmReviewSelection: () => {
+      requestPendingReviewFinalConfirm(state);
+      paint({ animate: false });
+    },
+    onFinalConfirmReviewSelection: () => {
+      if (!state.pendingReviewSelection) {
+        return;
+      }
+
+      selectReviewAnswer(state, lesson, state.pendingReviewSelection.answerIndex);
+      paint({ animate: false });
+    },
+    onCancelReviewSelection: () => {
+      clearPendingReviewAnswerSelection(state);
       paint({ animate: false });
     },
     onReviewStart: () => {
@@ -54,8 +102,35 @@ function paint(options = {}) {
   });
 }
 
-initStudentLogin(() => {
+function showMainApp() {
+  document.querySelector("#login-page").hidden = true;
+  document.querySelector("#main-app").hidden = false;
+}
+
+function prepareSummaryPreview() {
+  lesson.paragraphs.forEach((paragraph) => {
+    state.solvedParagraphs.add(paragraph.id);
+    state.collectedCenters.push({
+      paragraphId: paragraph.id,
+      label: paragraph.label,
+      text: paragraph.sentences[paragraph.centerIndex].text,
+    });
+  });
+  state.currentIndex = lesson.paragraphs.length - 1;
+  state.isComplete = true;
+}
+
+if (isSummaryPreview) {
+  prepareSummaryPreview();
+  showMainApp();
   renderStaticHeader(lesson);
-  paint();
+  paint({ animate: false });
   window.scrollTo({ top: 0, behavior: "auto" });
-});
+} else {
+  initStudentLogin(() => {
+    showMainApp();
+    renderStaticHeader(lesson);
+    paint();
+    window.scrollTo({ top: 0, behavior: "auto" });
+  });
+}
