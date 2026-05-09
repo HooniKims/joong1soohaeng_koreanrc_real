@@ -42,12 +42,23 @@ function paint(options = {}) {
   if (state.isComplete) {
     renderSummary(lesson, state, {
       onSubmit: async (summaryText) => {
-        if (!submitStudentSummary(state, summaryText)) {
+        const normalizedSummary = summaryText.trim();
+        if (!normalizedSummary) {
           paint({ animate: false });
           return;
         }
-        if (currentStudent) {
-          await submitSummaryToSheet(currentStudent, state.answerScores, state.studentSummary);
+        state.studentSummary = normalizedSummary;
+        state.isSummarySubmitting = true;
+        paint({ animate: false });
+        try {
+          if (currentStudent) {
+            await submitSummaryToSheet(currentStudent, state.answerScores, state.studentSummary);
+          }
+          submitStudentSummary(state, normalizedSummary);
+        } catch (error) {
+          state.isSummarySubmitting = false;
+          paint({ animate: false });
+          throw error;
         }
         paint({ animate: false });
       },

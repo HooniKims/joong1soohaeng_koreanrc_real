@@ -16,6 +16,7 @@ export function createInitialState() {
     collectedCenters: [],
     shuffledSummaryCenters: null,
     studentSummary: "",
+    isSummarySubmitting: false,
     isSummarySubmitted: false,
     isComplete: false,
   };
@@ -47,6 +48,7 @@ export function restoreProgressFromRecord(state, lesson, record, helpers) {
   state.submittingAnswerStep = null;
   state.shuffledSummaryCenters = null;
   state.studentSummary = record["요약하기"] ?? record["요약하기 점수"] ?? "";
+  state.isSummarySubmitting = false;
   state.isSummarySubmitted = Boolean(state.studentSummary);
   state.isComplete = resumePoint.step === "summary";
 
@@ -220,6 +222,7 @@ export function submitStudentSummary(state, summaryText) {
   }
 
   state.studentSummary = normalizedSummary;
+  state.isSummarySubmitting = false;
   state.isSummarySubmitted = true;
   return true;
 }
@@ -262,6 +265,7 @@ export function restartLesson(state) {
   state.collectedCenters = [];
   state.shuffledSummaryCenters = null;
   state.studentSummary = "";
+  state.isSummarySubmitting = false;
   state.isSummarySubmitted = false;
   state.isComplete = false;
 }

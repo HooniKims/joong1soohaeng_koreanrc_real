@@ -90,7 +90,11 @@ async function run() {
 
     await summaryInput.fill("유전 조작은 장점도 있지만 생태계와 생명 윤리 문제 때문에 신중하게 판단해야 한다.");
     await page.locator(".summary-submit").click();
-    await page.locator(".summary-submit-message").waitFor({ state: "visible" });
+    await page.locator(".summary-complete").waitFor({ state: "visible" });
+    const completeText = await page.locator(".summary-complete").textContent();
+    if (completeText !== "수고했습니다.") {
+      throw new Error(`unexpected summary completion message: ${completeText}`);
+    }
 
     console.log("manual summary flow passed");
   } finally {

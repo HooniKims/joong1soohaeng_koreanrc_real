@@ -950,7 +950,7 @@ button {
 .center-chip-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
 }
 
@@ -1056,7 +1056,8 @@ button {
 }
 
 .summary-submit-help,
-.summary-submit-message {
+.summary-saving,
+.summary-complete {
   margin: 0;
   font-size: 15px;
   line-height: 1.6;
@@ -1066,9 +1067,26 @@ button {
   color: rgba(255, 255, 255, 0.74);
 }
 
-.summary-submit-message {
+.summary-saving {
+  display: grid;
+  gap: 2px;
   color: var(--gold);
   font-weight: 900;
+}
+
+.summary-saving span {
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 14px;
+}
+
+.summary-complete {
+  display: grid;
+  place-items: center;
+  min-height: 22vh;
+  color: var(--gold);
+  font-size: clamp(38px, 8vw, 86px);
+  font-weight: 900;
+  text-align: center;
 }
 
 .rainbow-connector {

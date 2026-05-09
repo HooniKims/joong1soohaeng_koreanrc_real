@@ -57,9 +57,12 @@ async function run() {
     if (await page.locator(".center-chip").count() < 7) {
       throw new Error("summary preview should include all collected center sentences");
     }
-    const labels = await page.locator(".center-chip-header span").allTextContents();
-    if (labels.join(",") === "1문단,2문단,3문단,4문단,5문단,6문단,7문단") {
-      throw new Error("summary paragraph cards should be shuffled");
+    if (await page.locator(".center-chip-header span").count()) {
+      throw new Error("summary paragraph cards should not show paragraph labels");
+    }
+    const chipText = await page.locator(".collected-sentences").textContent();
+    if (/[1-7]문단/.test(chipText)) {
+      throw new Error(`summary paragraph cards should not expose paragraph numbers: ${chipText}`);
     }
 
     const firstSentence = await page.locator(".center-chip p").first().textContent();

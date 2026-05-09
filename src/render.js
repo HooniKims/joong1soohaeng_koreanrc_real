@@ -348,7 +348,6 @@ export function renderSummary(lesson, state, handlers) {
             (piece, index) => `
               <div class="center-chip" style="--delay:${index * 100}ms">
                 <div class="center-chip-header">
-                  <span>${piece.label}</span>
                   <button class="copy-center-sentence" type="button" data-copy-text="${escapeHtml(piece.text)}">복사하기</button>
                 </div>
                 <p>${piece.text}</p>
@@ -364,15 +363,19 @@ export function renderSummary(lesson, state, handlers) {
           name="studentSummary"
           rows="6"
           placeholder="중심 문장들을 이어 보며 전체 글의 핵심 내용을 직접 정리해 보세요."
-          ${state.isSummarySubmitted ? "disabled" : ""}
+          ${state.isSummarySubmitted || state.isSummarySubmitting ? "disabled" : ""}
         >${escapeHtml(state.studentSummary)}</textarea>
         <div class="summary-actions">
-          <button class="summary-submit" type="submit" ${state.isSummarySubmitted ? "disabled" : ""}>제출</button>
+          <button class="summary-submit" type="submit" ${state.isSummarySubmitted || state.isSummarySubmitting ? "disabled" : ""}>${
+            state.isSummarySubmitting ? "요약 저장 중" : "제출"
+          }</button>
           <button class="secondary-action" type="button">처음부터 다시 학습하기</button>
         </div>
         ${
-          state.isSummarySubmitted
-            ? `<p class="summary-submit-message">요약이 제출되었습니다.</p>`
+          state.isSummarySubmitting
+            ? `<p class="summary-saving"><strong>요약을 저장 중입니다.</strong><span>잠시만 기다려 주세요.</span></p>`
+            : state.isSummarySubmitted
+            ? `<p class="summary-complete">수고했습니다.</p>`
             : `<p class="summary-submit-help">빈칸에 직접 요약을 쓴 뒤 제출하세요.</p>`
         }
       </form>
