@@ -34,7 +34,7 @@ export function initStudentLogin(onConfirm) {
     }
   });
 
-  formEl.addEventListener("submit", (event) => {
+  formEl.addEventListener("submit", async (event) => {
     event.preventDefault();
 
     const student = {
@@ -57,10 +57,22 @@ export function initStudentLogin(onConfirm) {
       return;
     }
 
-    loginPageEl.hidden = true;
-    mainAppEl.hidden = false;
-    onConfirm(student);
+    try {
+      await onConfirm(student);
+      loginPageEl.hidden = true;
+      mainAppEl.hidden = false;
+    } catch (error) {
+      showError(getLoginSubmitErrorMessage(error));
+    }
   });
+}
+
+function getLoginSubmitErrorMessage(error) {
+  if (error.message === "student_number_name_mismatch") {
+    return "이미 다른 이름으로 등록된 학번입니다. 학번과 이름을 다시 확인하세요.";
+  }
+
+  return "기록을 불러오지 못했습니다. 잠시 뒤 다시 시도하세요.";
 }
 
 function getMissingFieldMessage(student) {

@@ -1,6 +1,12 @@
 // 학습 웹앱의 초기화와 사용자 상호작용을 연결하는 모듈
 import { lesson } from "./data.js";
 import { initStudentLogin } from "./login.js";
+import * as progress from "./progress.js";
+import {
+  getStudentRecord,
+  submitAnswerScore,
+  submitSummary as submitSummaryToSheet,
+} from "./sheets.js";
 import {
   createInitialState,
   clearPendingSentenceSelection,
@@ -8,6 +14,8 @@ import {
   requestPendingSelectionFinalConfirm,
   requestPendingReviewFinalConfirm,
   restartLesson,
+  restoreProgressFromRecord,
+  recordAnswerScore,
   clearPendingReviewAnswerSelection,
   selectReviewAnswer,
   selectSentence,
@@ -25,14 +33,21 @@ import {
 
 const state = createInitialState();
 const isSummaryPreview = new URLSearchParams(window.location.search).has("summaryPreview");
+let currentStudent = null;
 
 function paint(options = {}) {
   renderProgress(lesson, state);
 
   if (state.isComplete) {
     renderSummary(lesson, state, {
-      onSubmit: (summaryText) => {
-        submitStudentSummary(state, summaryText);
+      onSubmit: async (summaryText) => {
+        if (!submitStudentSummary(state, summaryText)) {
+          paint({ animate: false });
+          return;
+        }
+        if (currentStudent) {
+          await submitSummaryToSheet(currentStudent, state.answerScores, state.studentSummary);
+        }
         paint({ animate: false });
       },
       onRestart: () => {
@@ -58,12 +73,17 @@ function paint(options = {}) {
       requestPendingSelectionFinalConfirm(state);
       paint({ animate: false });
     },
-    onFinalConfirmSelection: () => {
+    onFinalConfirmSelection: async () => {
       if (!state.pendingSelection) {
         return;
       }
 
-      selectSentence(state, lesson, state.pendingSelection.sentenceIndex);
+      const feedback = selectSentence(state, lesson, state.pendingSelection.sentenceIndex);
+      const scoreKey = progress.getScoreKey(state.currentIndex, "center");
+      const score = feedback.isCorrect ? 1 : 0;
+      if (recordAnswerScore(state, scoreKey, score) && currentStudent) {
+        await submitAnswerScore(currentStudent, scoreKey, score);
+      }
       paint({ animate: false });
     },
     onCancelSelection: () => {
@@ -78,12 +98,17 @@ function paint(options = {}) {
       requestPendingReviewFinalConfirm(state);
       paint({ animate: false });
     },
-    onFinalConfirmReviewSelection: () => {
+    onFinalConfirmReviewSelection: async () => {
       if (!state.pendingReviewSelection) {
         return;
       }
 
-      selectReviewAnswer(state, lesson, state.pendingReviewSelection.answerIndex);
+      const feedback = selectReviewAnswer(state, lesson, state.pendingReviewSelection.answerIndex);
+      const scoreKey = progress.getScoreKey(state.currentIndex, "review");
+      const score = feedback.isCorrect ? 1 : 0;
+      if (recordAnswerScore(state, scoreKey, score) && currentStudent) {
+        await submitAnswerScore(currentStudent, scoreKey, score);
+      }
       paint({ animate: false });
     },
     onCancelReviewSelection: () => {
@@ -127,7 +152,10 @@ if (isSummaryPreview) {
   paint({ animate: false });
   window.scrollTo({ top: 0, behavior: "auto" });
 } else {
-  initStudentLogin(() => {
+  initStudentLogin(async (student) => {
+    currentStudent = student;
+    const record = await getStudentRecord(student);
+    restoreProgressFromRecord(state, lesson, record, progress);
     showMainApp();
     renderStaticHeader(lesson);
     paint();

@@ -44,6 +44,7 @@ async function run() {
   const browser = await chromium.launch();
   const page = await browser.newPage();
   await page.addInitScript(() => {
+    window.APP_CONFIG = { APPS_SCRIPT_URL: "" };
     Math.random = () => 0.99;
   });
 

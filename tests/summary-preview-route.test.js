@@ -45,6 +45,9 @@ async function run() {
   const page = await browser.newPage();
 
   try {
+    await page.addInitScript(() => {
+      window.APP_CONFIG = { APPS_SCRIPT_URL: "" };
+    });
     await page.goto(`http://127.0.0.1:${server.address().port}/?summaryPreview=1`);
 
     await page.locator("#student-summary").waitFor({ state: "visible" });

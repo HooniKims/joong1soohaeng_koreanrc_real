@@ -50,6 +50,9 @@ async function run() {
   });
 
   try {
+    await page.addInitScript(() => {
+      window.APP_CONFIG = { APPS_SCRIPT_URL: "" };
+    });
     await page.goto(`http://127.0.0.1:${server.address().port}/`);
     await page.locator(".login-submit").click();
     await page.waitForTimeout(250);

@@ -2,6 +2,7 @@
 export function createInitialState() {
   return {
     currentIndex: 0,
+    answerScores: {},
     selectedIndex: null,
     pendingSelection: null,
     feedback: null,
@@ -17,6 +18,63 @@ export function createInitialState() {
     isSummarySubmitted: false,
     isComplete: false,
   };
+}
+
+export function restoreProgressFromRecord(state, lesson, record, helpers) {
+  state.answerScores = helpers.normalizeScores(record);
+  state.solvedParagraphs.clear();
+  state.collectedCenters = [];
+
+  lesson.paragraphs.forEach((paragraph, index) => {
+    if (helpers.hasSubmittedScore(state.answerScores, helpers.getScoreKey(index, "center"))) {
+      state.solvedParagraphs.add(paragraph.id);
+      state.collectedCenters.push({
+        paragraphId: paragraph.id,
+        label: paragraph.label,
+        text: paragraph.sentences[paragraph.centerIndex].text,
+      });
+    }
+  });
+
+  const resumePoint = helpers.getNextResumePoint(state.answerScores, lesson.paragraphs.length);
+  state.currentIndex = resumePoint.paragraphIndex;
+  state.selectedIndex = null;
+  state.pendingSelection = null;
+  state.reviewAnswerIndex = null;
+  state.pendingReviewSelection = null;
+  state.reviewFeedback = null;
+  state.shuffledSummaryCenters = null;
+  state.studentSummary = record["요약하기"] ?? record["요약하기 점수"] ?? "";
+  state.isSummarySubmitted = Boolean(state.studentSummary);
+  state.isComplete = resumePoint.step === "summary";
+
+  if (resumePoint.step === "review") {
+    const paragraph = lesson.paragraphs[resumePoint.paragraphIndex];
+    const centerScore = Number(state.answerScores[helpers.getScoreKey(resumePoint.paragraphIndex, "center")]);
+    const centerSentence = paragraph.sentences[paragraph.centerIndex];
+    state.feedback = {
+      isCorrect: centerScore === 1,
+      role: centerScore === 1 ? centerSentence.role : "이미 제출된 선택",
+      relation: centerScore === 1 ? centerSentence.relation : "이미 제출된 중심 문장 선택입니다.",
+      sentence: centerSentence.text,
+    };
+    state.reviewTargetIndex = pickReviewTargetIndex(paragraph);
+    state.reviewStarted = true;
+    return;
+  }
+
+  state.feedback = null;
+  state.reviewTargetIndex = null;
+  state.reviewStarted = false;
+}
+
+export function recordAnswerScore(state, scoreKey, score) {
+  if (state.answerScores[scoreKey] !== undefined && state.answerScores[scoreKey] !== "") {
+    return false;
+  }
+
+  state.answerScores[scoreKey] = score;
+  return true;
 }
 
 export function setPendingSentenceSelection(state, selection) {
