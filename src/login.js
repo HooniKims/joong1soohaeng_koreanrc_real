@@ -5,6 +5,8 @@ const formEl = document.querySelector("#student-login-form");
 const numberInputEl = document.querySelector("#student-number");
 const nameInputEl = document.querySelector("#student-name");
 const errorEl = document.querySelector("#login-error");
+const loadingEl = document.querySelector("#login-loading");
+const submitButtonEl = document.querySelector(".login-submit");
 let isNameComposing = false;
 let errorDismissTimer = null;
 
@@ -37,6 +39,10 @@ export function initStudentLogin(onConfirm) {
   formEl.addEventListener("submit", async (event) => {
     event.preventDefault();
 
+    if (formEl.dataset.loading === "true") {
+      return;
+    }
+
     const student = {
       number: numberInputEl.value.trim(),
       name: sanitizeName(nameInputEl.value.trim()),
@@ -58,13 +64,25 @@ export function initStudentLogin(onConfirm) {
     }
 
     try {
+      setLoginLoading(true);
       await onConfirm(student);
       loginPageEl.hidden = true;
       mainAppEl.hidden = false;
     } catch (error) {
+      setLoginLoading(false);
       showError(getLoginSubmitErrorMessage(error));
     }
   });
+}
+
+function setLoginLoading(isLoading) {
+  formEl.dataset.loading = String(isLoading);
+  numberInputEl.disabled = isLoading;
+  nameInputEl.disabled = isLoading;
+  submitButtonEl.disabled = isLoading;
+  submitButtonEl.textContent = isLoading ? "학번, 이름 확인 중입니다." : "확인";
+  loadingEl.textContent = isLoading ? "잠시만 기다려 주세요." : "";
+  loadingEl.dataset.visible = String(isLoading);
 }
 
 function getLoginSubmitErrorMessage(error) {

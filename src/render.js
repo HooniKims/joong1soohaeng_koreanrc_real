@@ -118,19 +118,28 @@ function renderSelectionConfirm(list, state, handlers) {
   confirmEl.style.top = `${state.pendingSelection.top}px`;
   confirmEl.setAttribute("role", "dialog");
   confirmEl.setAttribute("aria-label", state.pendingSelection.isFinalConfirm ? "최종 선택 확인" : "선택 확인");
-  const prompt = state.pendingSelection.isFinalConfirm
+  const isSaving = state.submittingAnswerStep === "center";
+  const prompt = isSaving
+    ? "답을 저장 중입니다."
+    : state.pendingSelection.isFinalConfirm
     ? "진짜 후회 없죠?"
     : "이 문장으로 선택할까요?";
   const primaryClass = state.pendingSelection.isFinalConfirm
     ? "final-confirm-selection"
     : "confirm-selection";
   confirmEl.innerHTML = `
-    <p>${prompt}</p>
+    <p class="${isSaving ? "answer-saving-title" : ""}">${prompt}</p>
+    ${isSaving ? `<p class="answer-saving-copy">잠시만 기다려 주세요.</p>` : ""}
     <div class="selection-confirm-actions">
-      <button class="${primaryClass}" type="button">확인</button>
-      <button class="cancel-selection" type="button">다시 선택</button>
+      <button class="${primaryClass}" type="button" ${isSaving ? "disabled" : ""}>확인</button>
+      <button class="cancel-selection" type="button" ${isSaving ? "disabled" : ""}>다시 선택</button>
     </div>
   `;
+
+  if (isSaving) {
+    list.append(confirmEl);
+    return;
+  }
 
   if (state.pendingSelection.isFinalConfirm) {
     confirmEl
@@ -290,7 +299,10 @@ function renderReviewAnswerConfirm(state) {
   }
 
   const answerNumber = state.pendingReviewSelection.answerIndex + 1;
-  const prompt = state.pendingReviewSelection.isFinalConfirm
+  const isSaving = state.submittingAnswerStep === "review";
+  const prompt = isSaving
+    ? "답을 저장 중입니다."
+    : state.pendingReviewSelection.isFinalConfirm
     ? "마지막 확인입니다. 이 답으로 확정할까요?"
     : `${answerNumber}문장으로 제출할까요?`;
   const primaryClass = state.pendingReviewSelection.isFinalConfirm
@@ -299,10 +311,11 @@ function renderReviewAnswerConfirm(state) {
 
   return `
     <div class="review-answer-confirm" role="status" aria-live="polite">
-      <p>${prompt}</p>
+      <p class="${isSaving ? "answer-saving-title" : ""}">${prompt}</p>
+      ${isSaving ? `<p class="answer-saving-copy">잠시만 기다려 주세요.</p>` : ""}
       <div class="review-answer-confirm-actions">
-        <button class="${primaryClass}" type="button">제출</button>
-        <button class="review-cancel-selection" type="button">다시 고르기</button>
+        <button class="${primaryClass}" type="button" ${isSaving ? "disabled" : ""}>제출</button>
+        <button class="review-cancel-selection" type="button" ${isSaving ? "disabled" : ""}>다시 고르기</button>
       </div>
     </div>
   `;

@@ -19,6 +19,7 @@ import {
   clearPendingReviewAnswerSelection,
   selectReviewAnswer,
   selectSentence,
+  setSubmittingAnswerStep,
   setPendingReviewAnswerSelection,
   setPendingSentenceSelection,
   startReviewQuestion,
@@ -62,6 +63,9 @@ function paint(options = {}) {
     animate: options.animate ?? true,
     isLast: state.currentIndex === lesson.paragraphs.length - 1,
     onSelect: (selection) => {
+      if (state.submittingAnswerStep) {
+        return;
+      }
       setPendingSentenceSelection(state, selection);
       paint({ animate: false });
     },
@@ -74,11 +78,14 @@ function paint(options = {}) {
       paint({ animate: false });
     },
     onFinalConfirmSelection: async () => {
-      if (!state.pendingSelection) {
+      if (!state.pendingSelection || state.submittingAnswerStep) {
         return;
       }
 
-      const feedback = selectSentence(state, lesson, state.pendingSelection.sentenceIndex);
+      const sentenceIndex = state.pendingSelection.sentenceIndex;
+      setSubmittingAnswerStep(state, "center");
+      paint({ animate: false });
+      const feedback = selectSentence(state, lesson, sentenceIndex);
       const scoreKey = progress.getScoreKey(state.currentIndex, "center");
       const score = feedback.isCorrect ? 1 : 0;
       if (recordAnswerScore(state, scoreKey, score) && currentStudent) {
@@ -87,10 +94,16 @@ function paint(options = {}) {
       paint({ animate: false });
     },
     onCancelSelection: () => {
+      if (state.submittingAnswerStep) {
+        return;
+      }
       clearPendingSentenceSelection(state);
       paint({ animate: false });
     },
     onReviewSelect: (sentenceIndex) => {
+      if (state.submittingAnswerStep) {
+        return;
+      }
       setPendingReviewAnswerSelection(state, sentenceIndex);
       paint({ animate: false });
     },
@@ -99,11 +112,14 @@ function paint(options = {}) {
       paint({ animate: false });
     },
     onFinalConfirmReviewSelection: async () => {
-      if (!state.pendingReviewSelection) {
+      if (!state.pendingReviewSelection || state.submittingAnswerStep) {
         return;
       }
 
-      const feedback = selectReviewAnswer(state, lesson, state.pendingReviewSelection.answerIndex);
+      const answerIndex = state.pendingReviewSelection.answerIndex;
+      setSubmittingAnswerStep(state, "review");
+      paint({ animate: false });
+      const feedback = selectReviewAnswer(state, lesson, answerIndex);
       const scoreKey = progress.getScoreKey(state.currentIndex, "review");
       const score = feedback.isCorrect ? 1 : 0;
       if (recordAnswerScore(state, scoreKey, score) && currentStudent) {
@@ -112,6 +128,9 @@ function paint(options = {}) {
       paint({ animate: false });
     },
     onCancelReviewSelection: () => {
+      if (state.submittingAnswerStep) {
+        return;
+      }
       clearPendingReviewAnswerSelection(state);
       paint({ animate: false });
     },

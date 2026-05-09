@@ -11,6 +11,7 @@ export function createInitialState() {
     reviewAnswerIndex: null,
     pendingReviewSelection: null,
     reviewFeedback: null,
+    submittingAnswerStep: null,
     solvedParagraphs: new Set(),
     collectedCenters: [],
     shuffledSummaryCenters: null,
@@ -43,6 +44,7 @@ export function restoreProgressFromRecord(state, lesson, record, helpers) {
   state.reviewAnswerIndex = null;
   state.pendingReviewSelection = null;
   state.reviewFeedback = null;
+  state.submittingAnswerStep = null;
   state.shuffledSummaryCenters = null;
   state.studentSummary = record["요약하기"] ?? record["요약하기 점수"] ?? "";
   state.isSummarySubmitted = Boolean(state.studentSummary);
@@ -66,6 +68,7 @@ export function restoreProgressFromRecord(state, lesson, record, helpers) {
   state.feedback = null;
   state.reviewTargetIndex = null;
   state.reviewStarted = false;
+  state.submittingAnswerStep = null;
 }
 
 export function recordAnswerScore(state, scoreKey, score) {
@@ -75,6 +78,10 @@ export function recordAnswerScore(state, scoreKey, score) {
 
   state.answerScores[scoreKey] = score;
   return true;
+}
+
+export function setSubmittingAnswerStep(state, step) {
+  state.submittingAnswerStep = step;
 }
 
 export function setPendingSentenceSelection(state, selection) {
@@ -89,6 +96,7 @@ export function setPendingSentenceSelection(state, selection) {
   state.reviewAnswerIndex = null;
   state.pendingReviewSelection = null;
   state.reviewFeedback = null;
+  state.submittingAnswerStep = null;
 }
 
 export function requestPendingSelectionFinalConfirm(state) {
@@ -133,6 +141,7 @@ export function selectSentence(state, lesson, sentenceIndex) {
   state.reviewAnswerIndex = null;
   state.pendingReviewSelection = null;
   state.reviewFeedback = null;
+  state.submittingAnswerStep = null;
   return state.feedback;
 }
 
@@ -187,6 +196,7 @@ export function selectReviewAnswer(state, lesson, sentenceIndex) {
       ? `맞습니다. ${answerIndex + 1}문장을 정확히 찾았습니다. 문장 설명을 다시 확인한 뒤 다음 문단으로 넘어가세요.`
       : `${sentenceIndex + 1}문장은 ${paragraph.sentences[sentenceIndex].role}입니다. ${paragraph.sentences[sentenceIndex].relation}`,
   };
+  state.submittingAnswerStep = null;
 
   return state.reviewFeedback;
 }
@@ -233,6 +243,7 @@ export function moveNext(state, lesson) {
   state.reviewAnswerIndex = null;
   state.pendingReviewSelection = null;
   state.reviewFeedback = null;
+  state.submittingAnswerStep = null;
   return true;
 }
 
@@ -246,6 +257,7 @@ export function restartLesson(state) {
   state.reviewAnswerIndex = null;
   state.pendingReviewSelection = null;
   state.reviewFeedback = null;
+  state.submittingAnswerStep = null;
   state.solvedParagraphs.clear();
   state.collectedCenters = [];
   state.shuffledSummaryCenters = null;

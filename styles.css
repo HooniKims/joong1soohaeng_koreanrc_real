@@ -188,6 +188,12 @@ button {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+.login-submit:disabled {
+  cursor: wait;
+  opacity: 0.82;
+  transform: none;
+}
+
 .login-submit:hover,
 .login-submit:focus-visible {
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
@@ -222,6 +228,32 @@ button {
   max-height: 80px;
   padding-block: 9px;
   animation: loginErrorToast 2.4s var(--ease-out) both;
+}
+
+.login-loading {
+  grid-column: 1 / -1;
+  justify-self: start;
+  min-height: 0;
+  max-height: 0;
+  margin: -2px 0 0;
+  padding: 0 13px;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.45;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 0.2s ease, transform 0.2s ease, max-height 0.2s ease, padding 0.2s ease;
+}
+
+.login-loading[data-visible="true"] {
+  max-height: 80px;
+  padding-block: 9px;
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .app-shell {
@@ -520,6 +552,13 @@ button {
   font-weight: 800;
 }
 
+.answer-saving-copy {
+  margin: 4px 0 0;
+  color: color-mix(in srgb, var(--green-house) 70%, #fff 30%);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .selection-confirm-actions {
   display: flex;
   gap: 8px;
@@ -531,6 +570,12 @@ button {
   border-radius: 50px;
   font-weight: 800;
   cursor: pointer;
+}
+
+.selection-confirm button:disabled,
+.review-answer-confirm button:disabled {
+  cursor: wait;
+  opacity: 0.62;
 }
 
 .confirm-selection,

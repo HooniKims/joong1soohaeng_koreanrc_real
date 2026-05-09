@@ -163,7 +163,9 @@ async function runNameMismatchScenario() {
     await page.goto(`${baseUrl}/`);
     await login(page);
 
-    await page.locator("#login-error").waitFor({ state: "visible" });
+    await page.waitForFunction(() =>
+      document.querySelector("#login-error")?.textContent?.includes("이미 다른 이름으로 등록된 학번입니다"),
+    );
     const message = await page.locator("#login-error").textContent();
     if (!message.includes("이미 다른 이름으로 등록된 학번입니다")) {
       throw new Error(`wrong mismatch error message: ${message}`);
