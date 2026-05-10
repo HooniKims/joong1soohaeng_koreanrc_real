@@ -21,6 +21,19 @@ class MockRange {
     this.sheet.setCell(this.row, this.column, value);
   }
 
+  sort(options) {
+    const rows = this.sheet.rows.splice(this.row - 1, this.rows);
+    const sortIndex = options.column - this.column;
+    rows.sort((left, right) => {
+      const leftValue = String(left[sortIndex] ?? "");
+      const rightValue = String(right[sortIndex] ?? "");
+      return options.ascending
+        ? leftValue.localeCompare(rightValue, "ko-KR", { numeric: true })
+        : rightValue.localeCompare(leftValue, "ko-KR", { numeric: true });
+    });
+    this.sheet.rows.splice(this.row - 1, 0, ...rows);
+  }
+
   getValues() {
     return Array.from({ length: this.rows }, (_, rowOffset) =>
       Array.from({ length: this.columns }, (_, columnOffset) =>
@@ -62,9 +75,11 @@ class MockSheet {
 
 function loadAppsScript(headers = ["학번", "이름", "1.1", "1.2", "최종 점수", "요약하기 점수"]) {
   const sheet = new MockSheet("1-1", headers);
+  const sheets = { [sheet.name]: sheet };
+  const menuState = { name: "", items: [], added: false, alerts: [] };
   const spreadsheet = {
     getSheetByName(name) {
-      return name === sheet.name ? sheet : null;
+      return sheets[name] ?? null;
     },
   };
 
@@ -81,6 +96,25 @@ function loadAppsScript(headers = ["학번", "이름", "1.1", "1.2", "최종 점
     SpreadsheetApp: {
       getActiveSpreadsheet() {
         return spreadsheet;
+      },
+      getUi() {
+        return {
+          createMenu(name) {
+            menuState.name = name;
+            return {
+              addItem(label, functionName) {
+                menuState.items.push({ label, functionName });
+                return this;
+              },
+              addToUi() {
+                menuState.added = true;
+              },
+            };
+          },
+          alert(message) {
+            menuState.alerts.push(message);
+          },
+        };
       },
     },
     ContentService: {
@@ -104,7 +138,7 @@ function loadAppsScript(headers = ["학번", "이름", "1.1", "1.2", "최종 점
   const source = fs.readFileSync(path.join(root, "google-apps-script", "Code.gs"), "utf8");
   vm.createContext(sandbox);
   vm.runInContext(source, sandbox);
-  return { sheet, sandbox };
+  return { sheet, sheets, sandbox, menuState };
 }
 
 function runAction(sandbox, payload) {
@@ -160,6 +194,30 @@ function run() {
   });
   if (!summary.ok || sheet.getCell(2, 6) !== "요약문") {
     throw new Error(`summary was not saved to the first matching header: ${JSON.stringify(sheet.rows)}`);
+  }
+
+  const menuEnv = loadAppsScript();
+  menuEnv.sandbox.onOpen();
+  if (
+    menuEnv.menuState.name !== "수행평가 관리" ||
+    !menuEnv.menuState.added ||
+    menuEnv.menuState.items[0]?.label !== "학번 순으로 정렬" ||
+    menuEnv.menuState.items[0]?.functionName !== "menuSortByStudentNumber"
+  ) {
+    throw new Error(`sort menu was not registered correctly: ${JSON.stringify(menuEnv.menuState)}`);
+  }
+
+  menuEnv.sheet.rows.push(["1110", "학생10", "", "", "", ""]);
+  menuEnv.sheet.rows.push(["1102", "학생02", "", "", "", ""]);
+  menuEnv.sheet.rows.push(["1101", "학생01", "", "", "", ""]);
+  menuEnv.sandbox.menuSortByStudentNumber();
+
+  const sortedNumbers = menuEnv.sheet.rows.slice(1).map((row) => row[0]).join(",");
+  if (sortedNumbers !== "1101,1102,1110") {
+    throw new Error(`rows were not sorted by student number: ${JSON.stringify(menuEnv.sheet.rows)}`);
+  }
+  if (menuEnv.menuState.alerts[0] !== "1개 시트를 학번 순으로 정렬했습니다.") {
+    throw new Error(`sort alert was not shown correctly: ${JSON.stringify(menuEnv.menuState.alerts)}`);
   }
 
   console.log("apps script code passed");

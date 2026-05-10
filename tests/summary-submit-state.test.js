@@ -13,6 +13,7 @@ const types = new Map([
 ]);
 
 function createServer() {
+  const requests = [];
   return http.createServer((req, res) => {
     const url = new URL(req.url, "http://localhost");
 
@@ -23,6 +24,7 @@ function createServer() {
       });
       req.on("end", () => {
         const payload = body ? JSON.parse(body) : {};
+        requests.push(payload);
         const delay = payload.action === "submitSummary" ? 1000 : 0;
         setTimeout(() => {
           res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
@@ -65,6 +67,12 @@ function createServer() {
       return;
     }
 
+    if (url.pathname === "/__requests") {
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify(requests));
+      return;
+    }
+
     fs.readFile(filePath, (error, data) => {
       if (error) {
         res.writeHead(404).end();
@@ -97,8 +105,17 @@ async function run() {
     await page.locator(".login-submit").click();
 
     await page.locator("#student-summary").waitFor({ state: "visible" });
+    const placeholder = await page.locator("#student-summary").getAttribute("placeholder");
+    const expectedPlaceholder =
+      "중심 문장들을 이어보고, 문장들을 자연스럽게 연결할 수 있는 말들을 포함해서 글의 핵심 내용을 정리해보세요.";
+    if (placeholder !== expectedPlaceholder) {
+      throw new Error(`unexpected summary placeholder: ${placeholder}`);
+    }
     if (await page.locator(".center-chip-header span").count()) {
       throw new Error("summary cards should not show paragraph labels");
+    }
+    if (await page.getByRole("button", { name: "처음부터 다시 학습하기" }).count()) {
+      throw new Error("summary page should not show a restart button during assessment");
     }
 
     const chipText = await page.locator(".collected-sentences").textContent();
@@ -106,7 +123,9 @@ async function run() {
       throw new Error(`summary cards should not expose paragraph numbers: ${chipText}`);
     }
 
-    await page.locator("#student-summary").fill("중심 문장을 바탕으로 전체 글의 핵심을 정리했다.");
+    await page
+      .locator("#student-summary")
+      .fill("원자력 발전 기술은 전기를 안정적으로 만들 수 있다.\n하지만 사고와 폐기물 문제도 함께 살펴야 한다.");
     await page.locator(".summary-submit").click();
 
     await page.locator(".summary-saving").waitFor({ state: "visible" });
@@ -120,6 +139,32 @@ async function run() {
     }
 
     await page.locator(".summary-complete").waitFor({ state: "visible" });
+    await page.locator(".model-summary-modal").waitFor({ state: "visible" });
+    const modalText = await page.locator(".model-summary-modal").textContent();
+    if (
+      !modalText.includes("문단 요약 모범 답안") ||
+      !modalText.includes("전기를 만드는 여러 방법 중 하나가 원자력 발전 기술입니다.") ||
+      !modalText.includes("또한 원자력 발전 기술은 사용한 연료를 오랫동안 안전하게 보관해야 하는 어려움을 안고 있습니다.") ||
+      !modalText.includes("따라서 원자력 발전 기술을 활용할 때 우리에게 가장 필요한 것은 장점과 위험을 함께 따져 보는 신중한 태도입니다.")
+    ) {
+      throw new Error(`unexpected model summary modal: ${modalText}`);
+    }
+    await page.locator(".model-summary-close").click();
+    if (await page.locator(".model-summary-modal").count()) {
+      throw new Error("model summary modal should close when 확인 is clicked");
+    }
+
+    const requestsResponse = await fetch(`${baseUrl}/__requests`);
+    const requests = await requestsResponse.json();
+    const summaryRequest = requests.find((request) => request.action === "submitSummary");
+    if (
+      !summaryRequest ||
+      summaryRequest.summary !==
+        "원자력 발전 기술은 전기를 안정적으로 만들 수 있다. 하지만 사고와 폐기물 문제도 함께 살펴야 한다."
+    ) {
+      throw new Error(`summary should be saved as one connected paragraph: ${JSON.stringify(summaryRequest)}`);
+    }
+
     const completeText = await page.locator(".summary-complete").textContent();
     if (completeText !== "수고했습니다.") {
       throw new Error(`unexpected summary completion text: ${completeText}`);

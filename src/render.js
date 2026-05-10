@@ -348,9 +348,9 @@ export function renderSummary(lesson, state, handlers) {
             (piece, index) => `
               <div class="center-chip" style="--delay:${index * 100}ms">
                 <div class="center-chip-header">
+                  <p>${piece.text}</p>
                   <button class="copy-center-sentence" type="button" data-copy-text="${escapeHtml(piece.text)}">복사하기</button>
                 </div>
-                <p>${piece.text}</p>
               </div>
             `,
           )
@@ -362,14 +362,13 @@ export function renderSummary(lesson, state, handlers) {
           id="student-summary"
           name="studentSummary"
           rows="6"
-          placeholder="중심 문장들을 이어 보며 전체 글의 핵심 내용을 직접 정리해 보세요."
+          placeholder="중심 문장들을 이어보고, 문장들을 자연스럽게 연결할 수 있는 말들을 포함해서 글의 핵심 내용을 정리해보세요."
           ${state.isSummarySubmitted || state.isSummarySubmitting ? "disabled" : ""}
         >${escapeHtml(state.studentSummary)}</textarea>
         <div class="summary-actions">
           <button class="summary-submit" type="submit" ${state.isSummarySubmitted || state.isSummarySubmitting ? "disabled" : ""}>${
             state.isSummarySubmitting ? "요약 저장 중" : "제출"
           }</button>
-          <button class="secondary-action" type="button">처음부터 다시 학습하기</button>
         </div>
         ${
           state.isSummarySubmitting
@@ -379,6 +378,20 @@ export function renderSummary(lesson, state, handlers) {
             : `<p class="summary-submit-help">빈칸에 직접 요약을 쓴 뒤 제출하세요.</p>`
         }
       </form>
+      ${
+        state.isSummarySubmitted
+          ? `
+            <div class="model-summary-backdrop" role="presentation">
+              <section class="model-summary-modal" role="dialog" aria-modal="true" aria-labelledby="model-summary-title">
+                <p class="model-summary-kicker">문단 요약 모범 답안</p>
+                <h3 id="model-summary-title">이런 식으로 문장을 이어 쓸 수 있습니다.</h3>
+                <p>${escapeHtml(lesson.modelSummary)}</p>
+                <button class="model-summary-close" type="button">확인</button>
+              </section>
+            </div>
+          `
+          : ""
+      }
     </div>
   `;
 
@@ -389,7 +402,9 @@ export function renderSummary(lesson, state, handlers) {
   summaryEl.querySelectorAll(".copy-center-sentence").forEach((button) => {
     button.addEventListener("click", () => copyCenterSentence(button));
   });
-  summaryEl.querySelector(".secondary-action").addEventListener("click", handlers.onRestart);
+  summaryEl.querySelector(".model-summary-close")?.addEventListener("click", () => {
+    summaryEl.querySelector(".model-summary-backdrop")?.remove();
+  });
   summaryEl.dataset.summary = state.studentSummary;
   renderProgress(lesson, state);
 }

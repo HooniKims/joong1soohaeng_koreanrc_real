@@ -14,6 +14,19 @@ const SCORE_HEADERS = [
   "7.1",
   "7.2",
 ];
+const CLASS_SHEET_NAMES = ["1-1", "1-2", "1-3", "1-4", "1-5"];
+
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu("수행평가 관리")
+    .addItem("학번 순으로 정렬", "menuSortByStudentNumber")
+    .addToUi();
+}
+
+function menuSortByStudentNumber() {
+  const sortedCount = sortSheetsByStudentNumber_();
+  SpreadsheetApp.getUi().alert(`${sortedCount}개 시트를 학번 순으로 정렬했습니다.`);
+}
 
 function doGet(e) {
   return handleRequest_(e.parameter);
@@ -98,6 +111,31 @@ function submitSummary_(payload) {
   setFirstExistingHeader_(sheet, headers, rowIndex, ["요약하기", "요약하기 점수", "요약"], payload.summary);
   updateTotalScore_(sheet, headers, rowIndex);
   return { ok: true };
+}
+
+function sortSheetsByStudentNumber_() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  let sortedCount = 0;
+
+  CLASS_SHEET_NAMES.forEach((sheetName) => {
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    if (!sheet || sheet.getLastRow() <= 2) {
+      return;
+    }
+
+    const headers = getHeaders_(sheet);
+    const numberColumn = headers.indexOf("학번") + 1;
+    if (!numberColumn) {
+      throw new Error(`missing_student_number_header_${sheetName}`);
+    }
+
+    sheet
+      .getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn())
+      .sort({ column: numberColumn, ascending: true });
+    sortedCount += 1;
+  });
+
+  return sortedCount;
 }
 
 function getStudentSheet_(studentNumber) {

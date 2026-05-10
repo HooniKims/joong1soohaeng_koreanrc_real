@@ -13,7 +13,6 @@ import {
   moveNext,
   requestPendingSelectionFinalConfirm,
   requestPendingReviewFinalConfirm,
-  restartLesson,
   restoreProgressFromRecord,
   recordAnswerScore,
   clearPendingReviewAnswerSelection,
@@ -33,7 +32,9 @@ import {
 } from "./render.js";
 
 const state = createInitialState();
-const isSummaryPreview = new URLSearchParams(window.location.search).has("summaryPreview");
+const searchParams = new URLSearchParams(window.location.search);
+const isSummaryPreview =
+  searchParams.has("summaryPreview") || searchParams.get("preview") === "summary";
 let currentStudent = null;
 
 function paint(options = {}) {
@@ -42,7 +43,7 @@ function paint(options = {}) {
   if (state.isComplete) {
     renderSummary(lesson, state, {
       onSubmit: async (summaryText) => {
-        const normalizedSummary = summaryText.trim();
+        const normalizedSummary = normalizeSummaryText(summaryText);
         if (!normalizedSummary) {
           paint({ animate: false });
           return;
@@ -61,10 +62,6 @@ function paint(options = {}) {
           throw error;
         }
         paint({ animate: false });
-      },
-      onRestart: () => {
-        restartLesson(state);
-        paint();
       },
     });
     return;
@@ -155,6 +152,13 @@ function paint(options = {}) {
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
   });
+}
+
+function normalizeSummaryText(summaryText) {
+  return summaryText
+    .replace(/\s*\n+\s*/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
 
 function showMainApp() {
